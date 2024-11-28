@@ -25,11 +25,10 @@ class CoNSePDataset(HoVerDatasetBase):
 
     """
 
-    # TODO: doc string
-
     def __init__(
         self,
-        data_path,
+        image_dir,
+        geojson_dir,
         with_type=False,
         input_shape=None,
         mask_shape=None,
@@ -38,8 +37,8 @@ class CoNSePDataset(HoVerDatasetBase):
     ):
         assert input_shape is not None and mask_shape is not None
         self.run_mode = run_mode
-        self.data_path = data_path
-        self.load_all_data()
+        self.images     = os.listdir(image_dir)
+        self.geojsons   = os.listdir(geojson_dir)
 
         self.with_type = with_type
         self.mask_shape = mask_shape
@@ -55,14 +54,6 @@ class CoNSePDataset(HoVerDatasetBase):
         self.input_augs = iaa.Sequential(self.augmentor[1])
         self.id = self.id + worker_id
         return
-
-    def load_all_data(self):
-        data_list = os.listdir(self.data_path)
-        self.data = []
-        for data_name in data_list:
-            if data_name.rsplit(".", 1)[1] != "npy":
-                continue
-            self.data.append(os.path.join(self.data_path, data_name))
 
     def load_data(self, idx):
         data = np.load(self.data[idx])
