@@ -1,5 +1,11 @@
 import os
 
+# GeoJSON
+import json
+from shapely.geometry import shape
+from shapely.geometry.polygon import Polygon
+from PIL import Image, ImageDraw
+
 import numpy as np
 from imgaug import augmenters as iaa
 
@@ -27,8 +33,7 @@ class CoNSePDataset(HoVerDatasetBase):
 
     def __init__(
         self,
-        image_dir,
-        geojson_dir,
+        data_path,
         with_type=False,
         input_shape=None,
         mask_shape=None,
@@ -37,8 +42,28 @@ class CoNSePDataset(HoVerDatasetBase):
     ):
         assert input_shape is not None and mask_shape is not None
         self.run_mode = run_mode
-        self.images     = os.listdir(image_dir)
-        self.geojsons   = os.listdir(geojson_dir)
+        # self.image_dir = image_dir
+        # self.geojson_dir = geojson_dir
+
+        self.image_dir = 'data/01_training_dataset_tif_ROIs'
+        self.geojson_dir = 'data/01_training_dataset_geojson_nuclei'
+
+        self.images     = os.listdir(self.image_dir)
+        self.geojsons   = os.listdir(self.geojson_dir)
+
+        # Polygon class labels
+        self.classes = {
+            'nuclei_tumor': 0,  # Tumor
+            'nuclei_lymphocyte': 1,  # TIL
+            'nuclei_plasma_cell': 1,  # TIL
+            'nuclei_endothelium': 2,  # Other
+            'nuclei_apoptosis': 2,  # Other
+            'nuclei_stroma': 2,  # Other
+            'nuclei_histiocyte': 2,  # Other
+            'nuclei_melanophage': 2,  # Other
+            'nuclei_neutrophil': 2,  # Other
+            'nuclei_epithelium': 2,  # Other
+        }
 
         self.with_type = with_type
         self.mask_shape = mask_shape
@@ -56,13 +81,46 @@ class CoNSePDataset(HoVerDatasetBase):
         return
 
     def load_data(self, idx):
-        data = np.load(self.data[idx])
-        img = data[:, :, :3][:, :, ::-1].astype("uint8")  # BGR -> RGB
-        ann = data[:, :, 3:].astype("int32")
+        # Load image
+        img_path = os.path.join(self.image_dir, self.images[idx])
+        img = Image.open(img_path)
+        width, height = img.size
+
+        # Create blank images to draw instances and annotations
+        instances   = Image.new(mode="L", size=(width, height))
+        annotations = Image.new(mode="L", size=(width, height))
+        inst_draw = ImageDraw.Draw(instances)
+        ann_draw = ImageDraw.Draw(annotations)
+
+        # Load GeoJSON
+        json_path = os.path.join(self.geojson_dir, self.geojsons[idx])
+        with open(json_path, encoding="utf-8") as f:
+            geojson = json.load(f)
+
+        inst_id = 1
+        for feature in geojson["features"]:
+            geometry = shape(feature["geometry"])
+            label = feature["properties"]["classification"]["name"]
+
+            if geometry.geom_type == "Polygon":
+                coords = geometry.exterior.coords
+                if label == "nuclei_tumor":
+                    ann_draw.polygon(coords, outline=1, fill=1)
+                elif label in ["nuclei_lymphocyte", "nuclei_plasma_cell"]:
+                    ann_draw.polygon(coords, outline=2, fill=2)
+                else:
+                    ann_draw.polygon(coords, outline=3, fill=3)
+                inst_draw.polygon(coords, outline=inst_id, fill=inst_id)
+                inst_id += 1
+
+        # Combine instances and annotations
+        ann = np.stack([np.array(instances), np.array(annotations)], axis=0).astype("int32")
+        img = np.array(img).astype("uint8")
+
         return img, ann
 
     def __len__(self):
-        return len(self.data)
+        return len(self.images)
 
     def __getitem__(self, idx):
         img, ann = self.load_data(idx)
