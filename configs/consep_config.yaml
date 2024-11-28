@@ -1,8 +1,8 @@
 DATA:
   TRAIN_DATA_PATH: "./data"
   VALID_DATA_PATH: "./data"
-  NUM_TYPES: 3
-  PATCH_SIZE: 1024
+  NUM_TYPES: 4
+  PATCH_SIZE: 256
 TRAIN:
   DEVICE: "cuda"
   EPOCHS: 50
@@ -10,7 +10,7 @@ TRAIN:
 MODEL:
   BACKBONE: "resnext" # "resnet"
   PRETRAINED: True    #"./pretrained/resnet50-0676ba61.pth"
-  NUM_TYPES: 3
+  NUM_TYPES: 4
 LOGGING:
   SAVE_STEP: 5
   SAVE_PATH: "./experiments/consep/"
