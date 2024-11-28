@@ -116,7 +116,10 @@ class CoNSePDataset(HoVerDatasetBase):
         # Combine instances and annotations
         ann = np.stack([np.array(instances), np.array(annotations)], axis=0).astype("int32")
         ann = np.transpose(ann, (1, 2, 0))
-        img = np.array(img).astype("uint8")
+        img = np.array(img).astype("uint8")[:, :, :3]
+
+        print(ann.shape)
+        print(img.shape)
 
         return img, ann
 
