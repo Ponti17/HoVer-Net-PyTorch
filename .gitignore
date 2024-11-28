@@ -1,5 +1,5 @@
 __pycache__/
 pretrained/
 experiments/
-data/
 !/data/.keep
+neptune_api.key
