@@ -4,11 +4,21 @@ import os
 import torch
 import torch.optim as optim
 
+import neptune
+from neptune_pytorch import NeptuneLogger
+from neptune.utils import stringify_unsupported
+
 from hover_net.dataloader.dataset import get_dataloader
 from hover_net.models import HoVerNetExt
 from hover_net.process import proc_valid_step_output, train_step, valid_step
 from hover_net.tools.utils import (dump_yaml, read_yaml,
                                    update_accumulated_output)
+
+def get_dir():
+    """
+    Returns the directory of main
+    """
+    return os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser("Train model with PanNuck dataset")
@@ -72,6 +82,21 @@ if __name__ == "__main__":
         config
     )
 
+    neptune_api_token = open(f"{get_dir()}/neptune_api.key", "r", encoding="utf-8").read().strip()
+
+    # Initialize neptune.ai
+    run = neptune.init_run(
+        project="ponti-workspace/hover-net",
+        api_token=neptune_api_token
+    )
+
+    npt_logger = NeptuneLogger(
+        run=run,
+        model=model,
+        log_parameters=True,
+        log_freq=1
+    )
+
     for epoch in range(config['TRAIN']['EPOCHS']):
         accumulated_output = {}
         for step_idx, data in enumerate(train_dataloader):
@@ -84,6 +109,8 @@ if __name__ == "__main__":
                 device=config["TRAIN"]["DEVICE"],
                 show_step=1,
                 verbose=config["LOGGING"]["VERBOSE"],
+                npt_logger=npt_logger,
+                run=run,
             )
 
         for step_idx, data in enumerate(val_dataloader):
@@ -118,3 +145,6 @@ if __name__ == "__main__":
         model.state_dict(),
         os.path.join(config["LOGGING"]["SAVE_PATH"], "latest.pth")
     )
+
+    npt_logger.log_model("model")
+    run.stop()

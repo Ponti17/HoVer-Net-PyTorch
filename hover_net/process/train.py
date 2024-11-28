@@ -3,6 +3,10 @@ from collections import OrderedDict
 import torch
 import torch.nn.functional as F
 
+import neptune
+from neptune_pytorch import NeptuneLogger
+from neptune.utils import stringify_unsupported
+
 from hover_net.models.loss import dice_loss, mse_loss, msge_loss, xentropy_loss
 
 loss_opts = {
@@ -10,7 +14,6 @@ loss_opts = {
     "hv": {"mse": 1, "msge": 1},
     "tp": {"bce": 1, "dice": 1},
 }
-
 
 def train_step(
     epoch,
@@ -21,6 +24,8 @@ def train_step(
     device="cuda",
     show_step=250,
     verbose=True,
+    npt_logger=None,
+    run=None,
 ):
     # TODO: synchronize the attach protocol
     loss_func_dict = {
@@ -94,6 +99,8 @@ def train_step(
     loss.backward()
     optimizer.step()
     ####
+    run[npt_logger.base_namespace]["batch/loss"].append(f"{result_dict['EMA']['overall_loss']:.4f}")
+    npt_logger.log_checkpoint()
     if verbose:
         out = f"[Epoch {epoch + 1:3d}] {step + 1:4d} || "
         out += f"overall_loss {result_dict['EMA']['overall_loss']:.4f}"
