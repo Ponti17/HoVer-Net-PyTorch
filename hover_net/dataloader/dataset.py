@@ -53,7 +53,7 @@ def get_dataloader(
         dataset,
         batch_size=batch_size,
         shuffle=sulffle,
-        num_workers=8,
+        num_workers=0,
         pin_memory=True
     )
     return dataloader
